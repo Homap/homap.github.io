@@ -2,8 +2,8 @@ title:              Genomes
 email:              hpapoli@gmail.com
 description:        My personal website
 author:             Homa Papoli Yazdi
-baseurl:            "/startbootstrap-clean-blog-jekyll"
-url:                "https://startbootstrap.github.io"
+baseurl:            
+url:                "https://genomes.github.io"
 
 # Social Profiles
 twitter_username:
