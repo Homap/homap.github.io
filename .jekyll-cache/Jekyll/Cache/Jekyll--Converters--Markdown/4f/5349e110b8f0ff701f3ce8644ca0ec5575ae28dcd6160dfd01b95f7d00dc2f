@@ -1,0 +1,617 @@
+I"��<p>I need to map genomes of very distantly related organism to another. How should I do that?</p>
+
+<h1 id="today-is-tuesday-february-8th-2022">Today is Tuesday February 8th 2022</h1>
+
+<h1 id="script-to-prepare-the-genomes-and-run-busco-analysis">Script to prepare the genomes and run BUSCO analysis</h1>
+
+<h1 id="gunzip-the-reference-genomes">gunzip the reference genomes</h1>
+<p>cd /proj/snic2020-16-269/private/homap/green_algae/data/genomes
+for i in GCA*
+do 
+gunzip $i/${i}_genomic.fna.gz
+done</p>
+
+<h1 id="change-the-carriage-return-into-unix">Change the carriage return into Unix</h1>
+<p>dos2unix GCA_900128745.1_TOSAG39-1_assembly_report.txt
+for i in ../genomes/GCA*
+do 
+echo $i
+dos2unix $i/*report.txt
+done</p>
+
+<h1 id="create-a-softlink-of-all-fasta-files-in-fasta_softlinks">Create a softlink of all fasta files in fasta_softlinks</h1>
+<p>cd /proj/snic2020-16-269/private/homap/green_algae/data/fasta_softlinks
+for i in ../genomes/GCA*
+do 
+assembly_name=$(echo ${i}_genomic.fna | cut -f3 -d “/”)
+echo $assembly_name » assembly_name_list.txt
+ln -s ${i}/${assembly_name}
+species=$(grep ‘Organism name:’ $i/*report.txt | sed -e ‘s/# Organism name: //g’ -e ‘s/ (green algae)//g’ -e ‘s/ (nom. nud.)//g’ -e “s/’/s/g”)
+echo $species » assembly_name_list.txt
+first_part=$(echo $species | cut -f1 -d “ “ | cut -c1-3)
+second_part=$(echo $species | cut -f2 -d “ “| cut -c1-3)
+third_part=$(echo $species | cut -f3 -d “ “)
+if [ “$second_part” = “sp.” ]
+then
+ code_name=”${first_part}${second_part^}${third_part^}.genomic.fna”
+ echo $code_name » assembly_name_list.txt
+ mv $assembly_name $code_name
+else
+  code_name=”${first_part}${second_part^}.genomic.fna”
+  echo $code_name » assembly_name_list.txt
+  mv $assembly_name $code_name
+fi
+done</p>
+
+<p>for i in ../genomes/lassb_abudhabi_genomes/*.fa
+do
+echo $i
+assembly_name=$(echo $i | cut -f4 -d “/”)
+first_part=$(echo $i | cut -f4 -d “/” | cut -f1 -d “<em>” | cut -c1-3)
+second_part=$(echo $i | cut -f4 -d “/” | cut -f2 -d “</em>” | cut -f1 -d “.” | cut -c1-3)
+code_name=${first_part}${second_part^}.genomic.fna
+echo $assembly_name $code_name » assembly_name_list.txt
+ln -s ${i}
+mv $assembly_name $code_name
+done</p>
+
+<h1 id="run-busco">Run BUSCO</h1>
+<p>mkdir -p slurm_job_IDs
+mkdir -p slurm_job_IDs/busco
+for genome in ../data/fasta_softlinks/*.fna
+do
+echo $genome
+dir_name=$(echo $genome | cut -f4 -d ‘/’ | sed ‘s/.genomic.fna//g’)
+echo $dir_name
+sbatch -J $dir_name busco.sh $genome $dir_name &gt; slurm_job_IDs/busco/${dir_name}.out
+done</p>
+
+<h1 id="some-genomes-do-not-belong-to-chlorophyceae">Some genomes do not belong to Chlorophyceae</h1>
+<h1 id="euglena_viridisfa-eugvirgenomicfna--euglena-viridis-belongs-to-euglenoidea-and-therefore-only-08-buscos-of-chlorophyta-were-found-in-it">Euglena_viridis.fa EugVir.genomic.fna : Euglena viridis belongs to Euglenoidea and therefore, only 0.8% BUSCOs of chlorophyta were found in it.</h1>
+<h1 id="the-busco-run-continued-for-a-over-17-hours-i-stop-it-and-remove-this-from-further-analysis-since-it-does-not-belong-to-chlorophyceae">The BUSCO run continued for a over 17 hours. I stop it and remove this from further analysis since it does not belong to Chlorophyceae.</h1>
+<h1 id="lingulodinium_polyedrafa-linpolgenomicfna-lingulodinium-polyedra-belong-to-dinophyceae-only-01-buscos-of-chlorophyta-were-found-in-it">Lingulodinium_polyedra.fa LinPol.genomic.fna: Lingulodinium polyedra belong to Dinophyceae, only 0.1% BUSCOs of chlorophyta were found in it.</h1>
+<h1 id="i-made-a-mistake-initially-to-include-this-by-miss-reading-the-class-name-as-chlorophyceae-job-run-took-over-17-hours-i-stop-it-and-remove-it-from-further-analysis">I made a mistake initially to include this by miss-reading the class name as Chlorophyceae. Job run took over 17 hours, I stop it and remove it from further analysis.</h1>
+<h1 id="also-removing-the-genomes-from-datagenomeslassb_abudhabi_genomes-and-also-from--datafasta_softlinksassembly_name_listtxt">Also removing the genomes from data/genomes/lassb_abudhabi_genomes and also from  data/fasta_softlinks/assembly_name_list.txt.</h1>
+<h1 id="lastly-chlspice-l-has-been-running-for-over-18-hours-but-it-still-has-not-produced-any-summary-file-i-let-this-run-but-continue-with-the-rest-of-the-analysis-now-since-only-147-hour-is-left">Lastly, ChlSp.ICE-L has been running for over 18 hours but it still has not produced any summary file. I let this run but continue with the rest of the analysis now since only 1:47 hour is left</h1>
+<h1 id="and-it-might-fail-so-i-cancel-the-job-and-remove-its-run-folder-i-will-re-run-it-with-longer-hours-but-for-now-lets-continue-with-the-rest-of-the-analysis">and it might fail so I cancel the job and remove its run folder. I will re-run it with longer hours but for now, let’s continue with the rest of the analysis.</h1>
+
+<h1 id="when-running-buscos-it-outputs-the-result-directories-starting-with-run_-in-the-bin-folder-first-copy-all-directories-into-the-result-under-buscobusco_output-and-then-remove-them-from-the">When running BUSCOs, it outputs the result directories starting with “run_” in the bin folder. First copy all directories into the result under busco/busco_output and then remove them from the</h1>
+<h1 id="bin-directory">bin directory.</h1>
+<p>mkdir -p ../result/busco/busco_output
+cp -r run_* ../result/busco/busco_output # This takes a very long time so let’s do it later but NEED TO BE DONE!</p>
+
+<h1 id="get-the-busco-plot-for-the-genomes">Get the BUSCO plot for the genomes</h1>
+<p>mkdir -p ../result/busco/busco_summaries
+for f in run_<em>/short_summary</em>
+do
+echo $f
+cp $f ../result/busco/busco_summaries
+done</p>
+
+<p>export BUSCO_HOME=BUSCO-with-BLASTp
+python3 ${BUSCO_HOME}/BUSCO_plot.py -wd ../result/busco/busco_summaries</p>
+
+<h1 id="the-figure-was-produced-in-resultbuscobusco_summaries-however-it-needed-modifications-i-removed-the-busco_figurepng-from-the-directory-copied-the-busco_figurer-into-my-local-computer">The figure was produced in result/busco/busco_summaries, however, it needed modifications. I removed the busco_figure.png from the directory, copied the busco_figure.R into my local computer,</h1>
+<h1 id="opened-it-in-rstudio-and-made-the-modifications-for-font-and-figure-size-there-the-resulting-figure-is-busco_short_summaries_plotpdf-located-under-dropboxgreen_algaeresultbusco">opened it in Rstudio and made the modifications for font and figure size there. The resulting figure is busco_short_summaries_plot.pdf located under Dropbox/green_algae/result/busco.</h1>
+
+<h1 id="extract-complete-busco-genes">Extract complete BUSCO genes</h1>
+<h1 id="we-need-to-find-all-the-complete-busco-genes-predicted-from-all-of-the-genomes-since-1519-genes-have-unique-ids-we-can-quickly-get-a-list-of-all-gene-names-that-are-complete-and-use">We need to find all the “complete” BUSCO genes predicted from all of the genomes. Since 1519 genes have unique ids, we can quickly get a list of all gene names that are complete and use</h1>
+<h1 id="them-from-downstream-analysis">them from downstream analysis.</h1>
+<p>for f in run_<em>/full_table_</em>
+do
+grep -v “^#” ${f} | awk ‘$2==”Complete” {print $1}’ » complete_busco_ids.txt
+done</p>
+
+<h1 id="to-filter-out-the-complete-buscos-that-are-only-present-less-than-3-genomes-we-can-use-uniq-and-awk-commands">To filter out the complete BUSCOs that are only present less than 3 genomes, we can use uniq and awk commands</h1>
+<p>sort complete_busco_ids.txt |uniq -c &gt; complete_busco_ids_with_counts.txt
+awk ‘$NF &gt; 2 {print $2}’ complete_busco_ids_with_counts.txt &gt; final_busco_ids.txt</p>
+
+<h1 id="now-lets-copy-the-genes-both-nucleotides-and-amino-acids-to-different-directory-note-that-the-gene-names-are-just-identified-as-busco-id-with-either-faa-or-fna-extension-if-you-try">Now let’s copy the genes (both nucleotides and amino acids) to different directory. Note that the gene names are just identified as BUSCO id with either faa or fna extension. If you try</h1>
+<h1 id="to-copy-them-directly-to-a-single-directory-you-will-likely-overwrite-all-the-files-and-end-up-with-only-the-last-set-of-files-you-can-give-them-a-unique-name-and-then-merge-them-all-together">to copy them directly to a single directory, you will likely overwrite all the files and end up with only the last set of files. You can give them a unique name and then merge them all together,</h1>
+<h1 id="writing-them-to-a-single-busco-id-file-before-you-do-this-you-will-also-need-to-edit-the-sequence-name-fasta-header-so-that-it-includes-organism-identifier-in-it">writing them to a single busco id file. Before you do this, you will also need to edit the sequence name (fasta header) so that it includes organism identifier in it.</h1>
+
+<p>mkdir -p ../result/busco/busco_aa
+mkdir -p ../result/busco/busco_nt</p>
+
+<h1 id="this-took-several-hours-it-is-better-to-separate-into-two-loops-one-for-faa-and-one-for-fna-so-it-take-half-of-the-time">This took several hours, it is better to separate into two loops, one for .faa and one for .fna so it take half of the time.</h1>
+<p>for dir in  run_<em>/single_copy_busco_sequences
+do
+  abbrv=$(echo $dir | cut -f1 -d “/” | cut -f2 -d “_”)
+  echo $abbrv
+  for dirfile in ${dir}/</em>.faa
+  do
+    #echo $dirfile
+    file=$(echo $dirfile | cut -f3 -d “/”)
+    cp $dirfile ../result/busco/busco_aa/${abbrv}<em>${file}
+    sed -e ‘s/^&gt;/&gt;’${abbrv}’|/g’ -e ‘s/:.*//g’ ../result/busco/busco_aa/${abbrv}</em>${file} | tr ‘[:lower:]’ ‘[:upper:]’ &gt; ../result/busco/busco_aa/${abbrv}<em>${file}.1
+    mv -f ../result/busco/busco_aa/${abbrv}</em>${file}.1 ../result/busco/busco_aa/${abbrv}<em>${file}
+    done
+  for dirfile in ${dir}/*.fna
+  do
+  #echo $dirfile
+  file=$(echo $dirfile | cut -f3 -d “/”)
+  cp $dirfile ../result/busco/busco_nt/${abbrv}</em>${file}
+  sed -e ‘s/^&gt;/&gt;’${abbrv}’|/g’ -e ‘s/:.*//g’ ../result/busco/busco_nt/${abbrv}<em>${file} | tr ‘[:lower:]’ ‘[:upper:]’ &gt; ../result/busco/busco_nt/${abbrv}</em>${file}.1
+  mv -f ../result/busco/busco_nt/${abbrv}<em>${file}.1 ../result/busco/busco_nt/${abbrv}</em>${file}
+  done
+done</p>
+
+<h1 id="next-step-is-to-generate-single-file-for-each-of-the-busco-id-we-will-do-this-with-a-simple-bash-loop">Next step is to generate single file for each of the BUSCO id. We will do this with a simple bash loop.</h1>
+<h1 id="remember-the-file-final_busco_idstxt-we-created-previously-we-need-that-for-this-purpose">Remember the file final_busco_ids.txt we created previously? we need that for this purpose:</h1>
+<p>mkdir -p ../result/busco/busco_allSP_AA_fasta
+mkdir -p ../result/busco/busco_allSP_nt_fasta
+while read line
+do
+echo ${line}
+cat ../result/busco/busco_aa/<em>_${line}.faa » ../result/busco/busco_allSP_AA_fasta/${line}_aa.fasta
+cat ../result/busco/busco_nt/</em>_${line}.fna » ../result/busco/busco_allSP_nt_fasta/${line}_nt.fasta
+done &lt; final_busco_ids.txt</p>
+
+<h1 id="running-one-alignment-job-for-each-busco-id-using-mafft">Running one alignment job for each BUSCO ID using MAFFT</h1>
+<p>mkdir -p ../result/mafft_alignment
+mkdir -p slurm_job_IDs/mafft_alignment</p>
+
+<p>for aafasta in ../result/busco/busco_allSP_AA_fasta/*<em>aa.fasta
+do
+buscoID=$(echo $aafasta | cut -f5 -d “/” | cut -f1 -d “</em>”)
+echo $buscoID
+sbatch -J $buscoID mafft.sh ${aafasta} ../result/mafft_alignment/${buscoID}_aa.aln &gt; slurm_job_IDs/mafft_alignment/${buscoID}.out
+done</p>
+
+<h1 id="gene-tree-reconstruction">Gene tree reconstruction</h1>
+<p>mkdir -p ../result/raxml_aa
+mkdir -p slurm_job_IDs/raxml_aa</p>
+
+<h1 id="running-raxml-script-from-its-own-directory-since-i-cannot-figure-out-how-to-specify-output-directory-path--on-thursday-10th-of-february-i-ran-raxml-on-about-30-genes-because">Running raxml script from its own directory since I cannot figure out how to specify output directory path. # On Thursday 10th of February, I ran Raxml on about 30 genes because</h1>
+<h1 id="i-gave-16-cores-per-each-job-and-if-they-each-take-1-hour-that-would-be-16000-core-hours-so-i-was-afraid-i-would-use-up-all-resources-this-is-something-to-discuss">I gave 16 cores per each job and if they each take 1 hour, that would be 16000 core hours so I was afraid I would use up all resources. This is something to discuss.</h1>
+<p>cp raxml.sh ../result/raxml_aa</p>
+
+<p>cd ../result/raxml_aa</p>
+
+<p>for aa_aln in ../mafft_alignment/subsample/*<em>aa.aln
+do
+buscoID=$(echo $aa_aln | cut -f4 -d “/” | cut -f1 -d “</em>”)
+echo $buscoID
+sbatch -J $buscoID raxml.sh ${aa_aln} ${buscoID} &gt; ../../bin/slurm_job_IDs/raxml_aa/${buscoID}.out
+done</p>
+
+<h1 id="species-tree-reconstruction">Species tree reconstruction</h1>
+<h1 id="downloading-and-installing-astral">Downloading and installing ASTRAL</h1>
+<p>git clone https://github.com/smirarab/ASTRAL.git
+cd ASTRAL
+./make.sh</p>
+<h1 id="test-if-it-works">Test if it works:</h1>
+<p>java -jar astral.5.7.8.jar -i Astral/test_data/song_primates.424.gene.tre</p>
+<h1 id="it-works-lala-d">It works! LALA :D</h1>
+<p>mkdir -p ../result/astral</p>
+
+<p>cat ../result/raxml_aa/RAxML_bestTree.* » ../result/astral/busco_genes_ML.tree</p>
+<h1 id="before-we-proceed-with-the-species-tree-we-need-to-fix-the-title-or-the-taxa-name-in-the-gene-trees-as-even-single">Before we proceed with the species tree, we need to fix the title (or the taxa name) in the gene trees. As even single</h1>
+<h1 id="tax-in-these-gene-trees-are-identified-as-gensppbuscoid-they-all-have-unique-ids-and-it-will-be-considered-as-separate">tax in these gene trees are identified as genspp|buscoid, they all have unique ids and it will be considered as separate</h1>
+<h1 id="taxa-we-dont-want-this-for-this-we-need-to-remove-the-buscoid-from-the-name">taxa. We don’t want this. For this, we need to remove the buscoid from the name.</h1>
+
+<table>
+  <tbody>
+    <tr>
+      <td>sed -i ‘s/</td>
+      <td>[^:]*//g’ busco_genes_ML.tree</td>
+    </tr>
+  </tbody>
+</table>
+
+<h1 id="finally-lets-generate-a-species-tree-using-astral-coalescent-based-species-tree-estimation-program-astral-is-a">Finally, let’s generate a species tree using ASTRAL coalescent-based species tree estimation program. ASTRAL is a</h1>
+<h1 id="fast-method-for-estimating-species-trees-from-multiple-genes-which-is-statistically-consistent-and-can-run-on-multiple-gene-trees-efficiently">fast method for estimating species trees from multiple genes which is statistically consistent, and can run on multiple gene trees efficiently.</h1>
+<p>export ASTRAL_HOME=ASTRAL</p>
+
+<p>java -jar ${ASTRAL_HOME}/astral.5.7.8.jar –input ../result/astral/busco_genes_ML.tree –output ../result/astral/busco_genes_ASTRAL_spp.tree</p>
+
+<h1 id="a-newick-format-tree-is-produced-i-upload-it-into-httpwwwevolgeniusinfoevolview-to-get-a-tree-figure">A newick format tree is produced. I upload it into http://www.evolgenius.info/evolview to get a tree figure.</h1>
+
+<h1 id="we-end-here-on-thursday-10th-of-february---continue-after-discussion">We end here on Thursday 10th of February - Continue after discussion.</h1>
+
+<h1 id="we-are-now-march-4th-and-continue-with-the-analyses-with-full-dataset">We are now March 4th and continue with the analyses with full dataset</h1>
+
+<p>cp raxml.sh ../result/raxml_aa</p>
+
+<p>cd ../result/raxml_aa</p>
+
+<h1 id="create-batches">Create batches</h1>
+<p>for i in {1..20}
+do
+mkdir -p batch.${i}
+done</p>
+<h1 id="moving-files-to-batch1-to-batch20-in-counts-of-60-manually-by-changing-batch1-to-batch20-in-the-loop-below">moving files to batch.1 to batch.20 in counts of 60 manually by changing batch.1 to batch.20 in the loop below</h1>
+<p>i=0
+for f in *aln
+do
+  ((i=i+1))
+  echo $i
+  if (( $i &lt; 60 ))
+  then
+    echo $f
+    mv $f batch.20
+  else
+    break
+  fi
+done</p>
+
+<h1 id="submit-jobs-1-batch-at-a-time-from-batch1-to-batch2-to-prevent-overuse-of-resources">Submit jobs 1 batch at a time from batch.1 to batch.2 to prevent overuse of resources</h1>
+<p>for aa_aln in ../mafft_alignment/batch.1/*<em>aa.aln
+do
+buscoID=$(echo $aa_aln | cut -f4 -d “/” | cut -f1 -d “</em>”)
+echo $buscoID
+sbatch -J $buscoID raxml.sh ${aa_aln} ${buscoID} &gt; ../../bin/slurm_job_IDs/raxml_aa/${buscoID}.out
+done</p>
+
+<p>for aa_aln in ../mafft_alignment/batch.2/*<em>aa.aln
+do
+buscoID=$(echo $aa_aln | cut -f4 -d “/” | cut -f1 -d “</em>”)
+echo $buscoID
+sbatch -J $buscoID raxml.sh ${aa_aln} ${buscoID} &gt; ../../bin/slurm_job_IDs/raxml_aa/${buscoID}.out
+done</p>
+
+<p>for aa_aln in ../mafft_alignment/batch.3/*<em>aa.aln
+do
+buscoID=$(echo $aa_aln | cut -f4 -d “/” | cut -f1 -d “</em>”)
+echo $buscoID
+sbatch -J $buscoID raxml.sh ${aa_aln} ${buscoID} &gt; ../../bin/slurm_job_IDs/raxml_aa/${buscoID}.out
+done</p>
+
+<p>for aa_aln in ../mafft_alignment/batch.4/*<em>aa.aln
+do
+buscoID=$(echo $aa_aln | cut -f4 -d “/” | cut -f1 -d “</em>”)
+echo $buscoID
+sbatch -J $buscoID raxml.sh ${aa_aln} ${buscoID} &gt; ../../bin/slurm_job_IDs/raxml_aa/${buscoID}.out
+done</p>
+
+<p>for aa_aln in ../mafft_alignment/batch.5/*<em>aa.aln
+do
+buscoID=$(echo $aa_aln | cut -f4 -d “/” | cut -f1 -d “</em>”)
+echo $buscoID
+sbatch -J $buscoID raxml.sh ${aa_aln} ${buscoID} &gt; ../../bin/slurm_job_IDs/raxml_aa/${buscoID}.out
+done</p>
+
+<p>for aa_aln in ../mafft_alignment/batch.6/*<em>aa.aln
+do
+buscoID=$(echo $aa_aln | cut -f4 -d “/” | cut -f1 -d “</em>”)
+echo $buscoID
+sbatch -J $buscoID raxml.sh ${aa_aln} ${buscoID} &gt; ../../bin/slurm_job_IDs/raxml_aa/${buscoID}.out
+done</p>
+
+<p>cat ../result/raxml_aa/RAxML_bestTree.* » ../result/astral/busco_genes_ML.tree</p>
+<h1 id="before-we-proceed-with-the-species-tree-we-need-to-fix-the-title-or-the-taxa-name-in-the-gene-trees-as-even-single-1">Before we proceed with the species tree, we need to fix the title (or the taxa name) in the gene trees. As even single</h1>
+<h1 id="tax-in-these-gene-trees-are-identified-as-gensppbuscoid-they-all-have-unique-ids-and-it-will-be-considered-as-separate-1">tax in these gene trees are identified as genspp|buscoid, they all have unique ids and it will be considered as separate</h1>
+<h1 id="taxa-we-dont-want-this-for-this-we-need-to-remove-the-buscoid-from-the-name-1">taxa. We don’t want this. For this, we need to remove the buscoid from the name.</h1>
+
+<table>
+  <tbody>
+    <tr>
+      <td>sed -i ‘s/</td>
+      <td>[^:]*//g’ ../result/astral/busco_genes_ML.tree</td>
+    </tr>
+  </tbody>
+</table>
+
+<h1 id="finally-lets-generate-a-species-tree-using-astral-coalescent-based-species-tree-estimation-program-astral-is-a-1">Finally, let’s generate a species tree using ASTRAL coalescent-based species tree estimation program. ASTRAL is a</h1>
+<h1 id="fast-method-for-estimating-species-trees-from-multiple-genes-which-is-statistically-consistent-and-can-run-on-multiple-gene-trees-efficiently-1">fast method for estimating species trees from multiple genes which is statistically consistent, and can run on multiple gene trees efficiently.</h1>
+<p>export ASTRAL_HOME=ASTRAL</p>
+
+<p>java -jar ${ASTRAL_HOME}/astral.5.7.8.jar –input ../result/astral/busco_genes_ML.tree –output ../result/astral/busco_genes_ASTRAL_spp.tree</p>
+
+<h1 id="a-newick-format-tree-is-produced-i-upload-it-into-httpwwwevolgeniusinfoevolview-to-get-a-tree-figure-1">A newick format tree is produced. I upload it into http://www.evolgenius.info/evolview to get a tree figure.</h1>
+
+<h1 id="analysis-of-gene-family-evolution-and-diversification">Analysis of gene family evolution and diversification</h1>
+
+<h1 id="one-extra-tip-try-adding-p-raxml-version-avx2-to-your-command-this-will-greatly-speed-up-your-run-time">One extra tip: try adding –p-raxml-version AVX2 to your command. This will greatly speed up your run time.</h1>
+
+<h1 id="lets-take-4-species">Let’s take 4 species</h1>
+<h1 id="sphaeropleales-sister-group-to-chlamymonadales">Sphaeropleales: sister group to Chlamymonadales</h1>
+<h1 id="multicellular-tetradesmus-acuminatus---gca_9028097452_scenedesmus-acuminatus-sag-3881">Multicellular: Tetradesmus acuminatus - GCA_902809745.2_Scenedesmus-acuminatus-SAG-38.81</h1>
+<h1 id="unicellular-scenedesmus-vacuolatus---gca_0047645051_ufz-svac-10">Unicellular: Scenedesmus vacuolatus - GCA_004764505.1_UFZ-Svac-1.0</h1>
+
+<h1 id="multicellular-scenedesmus-quadricauda-gca_0023175451_asm231754v1">Multicellular: Scenedesmus quadricauda: GCA_002317545.1_ASM231754v1</h1>
+<h1 id="unicellular-monoraphidium-neglectum-gca_0006116451_mono_v1">Unicellular: Monoraphidium neglectum: GCA_000611645.1_mono_v1</h1>
+
+<h1 id="lets-take-4-species-with-gene-annotation-gff">Let’s take 4 species with gene annotation (gff)</h1>
+<h1 id="c-reinhardtii--gca_0000025953_chlamydomonas_reinhardtii_v55_genomicfna-gcf_0000025952">C. reinhardtii : GCA_000002595.3_Chlamydomonas_reinhardtii_v5.5_genomic.fna GCF_000002595.2</h1>
+<p>cp ../genomes/GCA_000002595.3_Chlamydomonas_reinhardtii_v5.5/GCA_000002595.3_Chlamydomonas_reinhardtii_v5.5_protein.faa.gz .</p>
+<h1 id="tetrabaena-socialis--gca_0028917351">Tetrabaena socialis : GCA_002891735.1</h1>
+<p>cp ../genomes/GCA_002891735.1_TetSoc1/GCA_002891735.1_TetSoc1_protein.faa.gz .</p>
+<h1 id="gonium-pectorale--gca_0015845851">Gonium Pectorale : GCA_001584585.1</h1>
+<p>cp ../genomes/GCA_001584585.1_ASM158458v1/GCA_001584585.1_ASM158458v1_protein.faa.gz .</p>
+<h1 id="volvox-reticuliferus--gca_0196502351">Volvox reticuliferus : GCA_019650235.1</h1>
+<p>cp ../genomes/GCA_019650235.1_Vretifemale_1.0/GCA_019650235.1_Vretifemale_1.0_protein.faa.gz .</p>
+
+<h1 id="decompress-all-protein-files">decompress all protein files</h1>
+<p>gunzip *gz</p>
+<h1 id="change-names">change names</h1>
+<h1 id="each-fasta-file-must-have-a-name-in-the-form-xxxxfasta-where-xxxx-is-a-three-or-four-letter-unique-taxon-code--for-example-hsafasta-or-ecofasta">each .fasta file must have a name in the form ‘xxxx.fasta’ where xxxx is a three or four letter unique taxon code.  For example: hsa.fasta or eco.fasta</h1>
+<p>mv GCA_000002595.3_Chlamydomonas_reinhardtii_v5.5_protein.faa crei.fasta
+mv GCA_002891735.1_TetSoc1_protein.faa tsoc.fasta
+mv GCA_001584585.1_ASM158458v1_protein.faa gpec.fasta
+mv GCA_019650235.1_Vretifemale_1.0_protein.faa vret.fasta</p>
+
+<h1 id="create-orthomcl-sqlite-database">Create OrthoMCL sqlite database</h1>
+<p>if [ ! $ORTHO_DB  ] ; then
+  ORTHO_DB=”orthoMCL.DB.<code class="language-plaintext highlighter-rouge">date +%Y.%m.%d</code>”; 
+fi</p>
+
+<p>echo “dbVendor=sqlite 
+dbConnectString=DBI:SQLite:database=${ORTHO_DB}.sqlite
+dbLogin=none
+dbPassword=none
+similarSequencesTable=SimilarSequences
+orthologTable=Ortholog
+inParalogTable=InParalog
+coOrthologTable=CoOrtholog
+interTaxonMatchView=InterTaxonMatch
+percentMatchCutoff=50
+evalueExponentCutoff=-5” &gt; orthomcl.config</p>
+
+<h1 id="drop-db-to-get-a-clean-slate">drop db to get a clean slate</h1>
+<p>if [ -e “$ORTHO_DB.sqlite” ] ; then
+  echo “Deleting $ORTHO_DB.sqlite”
+  rm $ORTHO_DB.sqlite
+fi</p>
+
+<p>orthomclInstallSchema orthomcl.config</p>
+
+<h1 id="create-clean-fasta-for-orthomcl">Create clean fasta for orthoMCL</h1>
+<p>module load bioinfo-tools
+module load OrthoMCL/2.0.9</p>
+
+<p>DIR=<code class="language-plaintext highlighter-rouge">pwd</code>
+UNIQID=1</p>
+<h1 id="let-orthomcl-clean-the-fastas">let orthoMCL clean the FASTAs:</h1>
+<p>if [ ! -d cleanseq ] ; then
+  mkdir cleanseq
+  cd cleanseq
+  for file in $DIR/proteomes/*.fasta
+   do
+   echo $file
+   base=<code class="language-plaintext highlighter-rouge">basename $file .fasta</code>
+   echo $base
+   ## which field has a uniq ID? =&gt; 2
+   # $base : a three or four letter unique abbreviation for the taxon
+   # $file : fasta file
+   # $UNIQID : the field that contains the protein ID
+   orthomclAdjustFasta $base $file $UNIQID # Create an OrthoMCL compliant .fasta file, by adjusting definition lines.
+  done
+  cd $DIR
+  # Create goodProteins.fasta containing all good proteins and rejectProteins.fasta containing all rejects.
+  # input_dir :leanseq - a directory containing a set of .fasta files
+  # 10: minimum allowed length of proteins
+  # 10 : maximum percent stop codons.
+  orthomclFilterFasta cleanseq 10 10 
+fi</p>
+
+<h2 id="format-goodproteins-blast-db">format goodProteins BLAST DB</h2>
+<p>if [ ! -e $DIR/goodProteins.fasta.pin ] ; then
+  makeblastdb -in $DIR/goodProteins.fasta -title “OrthoMCLPeps” -parse_seqids -dbtype prot
+fi</p>
+
+<p>SPLIT_DEFAULT=50</p>
+
+<p>if [ ! $SPLIT  ] ; then 
+  SPLIT=$SPLIT_DEFAULT
+fi</p>
+
+<h2 id="split-up-goodproteins-into-smaller-fasta">split up goodProteins into smaller FASTA</h2>
+<p>MAX=<code class="language-plaintext highlighter-rouge">expr $SPLIT - 1</code>
+if [ ! -d $DIR/good_proteins_split ] ; then
+  mkdir $DIR/good_proteins_split
+fi
+if [ ! -e $DIR/good_proteins_split/goodProteins_part_${MAX}.fasta ] ; then
+  cd $DIR/good_proteins_split
+  cp -s $DIR/goodProteins.fasta .
+  split_fasta.pl $SPLIT goodProteins.fasta
+  rm -f $DIR/good_proteins_split/goodProteins.fasta
+fi 
+cd $DIR</p>
+
+<h1 id="set-some-default-values">Set some default values:</h1>
+<p>BLAST_THREADS=4
+BLAST_TIME=”10:00:00”
+ACCOUNT=”snic2022-22-149”
+EMAIL=”homa.papoli_yazdi@biol.lu.se”</p>
+
+<h2 id="get-ready-for-blast">get ready for blast</h2>
+<h2 id="consider-adding-check-for-qsub--if--which-qsub-----then">consider adding check for qsub:  if [ <code class="language-plaintext highlighter-rouge">which qsub</code> != ‘’ ] ; then</h2>
+<p>if [ ! -d $DIR/blastp_out ] ; then
+  mkdir $DIR/blastp_out
+#!/bin/bash -l
+#SBATCH -A snic2022-22-149
+#SBATCH -p core -n 4
+#SBATCH -t 10:00:00
+#SBATCH -J run_split_blast_array
+#SBATCH –mail-user=homa.papoli_yazdi@biol.lu.se
+#SBATCH –mail-type=ALL</p>
+
+<p>module load bioinfo-tools
+module load blast/2.12.0+</p>
+
+<p>PART=$1</p>
+
+<p>export DIR=/proj/snic2020-16-269/private/homap/green_algae/data
+blastp -query good_proteins_split/goodProteins_part_${PART}.fasta -db goodProteins.fasta -num_threads 4 -outfmt 6 -out $DIR/blastp_out/goodProteins_part_${PART}_vs_goodProteins.BLASTP.tab -evalue 1e-3</p>
+
+<h1 id="submit-blast-jobs">Submit BLAST jobs</h1>
+<p>for PART in {0..49}; do
+    echo submitting job for part $PART
+    sbatch $DIR/run_split_blast_array.sh $PART 
+done</p>
+
+<h1 id="wednesday-the-30th-start-here">Wednesday the 30th, start here</h1>
+<h1 id="this-will-reformat-the-blast-data-into-something-to-load-into-the-database">This will reformat the BLAST data into something to load into the database</h1>
+<p>if [ ! -f goodProteins.BLASTP.bpo ]; then
+ cat blastp_out/*tab &gt; goodProteins.BLASTP.tab
+ orthomclBlastParser goodProteins.BLASTP.tab cleanseq &gt; goodProteins.BLASTP.bpo
+fi</p>
+
+<h1 id="load-the-data-into-the-db">Load the data into the DB</h1>
+<p>orthomclLoadBlast orthomcl.config goodProteins.BLASTP.bpo</p>
+
+<p>finish.orthomcl.sh</p>
+
+<h1 id="running-orthomcl">Running orthoMCL</h1>
+<p>#!/bin/bash -l</p>
+
+<p>#SBATCH -A snic2022-22-149
+#SBATCH -p core -n 4
+#SBATCH -t 4-00:00:00
+#SBATCH -J finish.orthomcl
+#SBATCH –mail-user=homa.papoli_yazdi@biol.lu.se
+#SBATCH –mail-type=FAIL</p>
+
+<p>module load bioinfo-tools
+module load OrthoMCL #/2.0.9</p>
+<h1 id="module-load-mcl14-137">module load mcl/14-137</h1>
+<h1 id="module-load-sqlite3162">module load sqlite/3.16.2</h1>
+<h1 id="module-load-blast250">module load blast/2.5.0+</h1>
+<h1 id="module-load-perl5184">module load perl/5.18.4</h1>
+<h1 id="module-load-bioperl16924_perl5184">module load BioPerl/1.6.924_Perl5.18.4</h1>
+
+<p>cd $DIR</p>
+
+<h1 id="now-run-the-orthologparalog-initial-finding">now run the ortholog/paralog initial finding</h1>
+<p>rm -rf pairs pairs.log 
+orthomclPairs orthomcl.config pairs.log cleanup=no</p>
+
+<h1 id="dump-out-the-ortholog-groups-and-the-mclinput-file">Dump out the ortholog groups and the mclInput file</h1>
+<p>orthomclDumpPairsFiles orthomcl.config</p>
+
+<h1 id="run-mcl-for-clustering">Run mcl for clustering</h1>
+<p>mcl mclInput  –abc -I 1.5 -o mclOutput.I15.out</p>
+
+<p>mcl mclInput  –abc -I 2 -o mclOutput.I2.out</p>
+
+<p>mcl mclInput  –abc -I 3 -o mclOutput.I3.out</p>
+
+<h1 id="convert-the-mcl-clusters-into-orthomcl-groups">convert the MCL clusters into OrthoMCL groups</h1>
+<p>orthomclMclToGroups OG 1 &lt; mclOutput.I15.out &gt; mclGroups.I15.table
+orthomclMclToGroups OG 1 &lt; mclOutput.I2.out &gt; mclGroups.I2.table
+orthomclMclToGroups OG 1 &lt; mclOutput.I3.out &gt; mclGroups.I3.table</p>
+<h1 id="and-finally-obtain-the-singleton-files-so-everything-in-your-goodproteinsfasta-file-that-was-not-included-in-the-clusters-in-mclgroupsi15table">And finally obtain the singleton files (so everything in your goodProteins.fasta file that was not included in the clusters in “mclGroups.I15.table”):</h1>
+<p>orthomclSingletons goodProteins.fasta mclGroups.I15.table » singletons.txt</p>
+<h1 id="and-you-are-done-do-a-final-count-of-the-final-clusters-obtained-yielded-for-your-dataset">And you are done! do a final count of the final clusters obtained yielded for your dataset:</h1>
+
+<p>#cut -d”:” -f1 mclGroups.I15.table | wc -l;</p>
+<h1 id="the-number-you-obtained-should-match-what-was-written-in-the-log-file-in-my-case-called-mcl_orthooutput-for-the-mcl-command-you-ran-hopefully-in-the-cluster">The number you obtained should match what was written in the log file (in my case called “mcl_ortho.output”) for the “mcl” command you ran hopefully in the cluster…</h1>
+<p>#grep “clusters found” mcl_ortho.output</p>
+
+<h1 id="orthofinder252">OrthoFinder/2.5.2</h1>
+<p>#</p>
+
+<h1 id="for-species-selected-create-a-fasta-file-with-protein-sequences">For species selected, create a fasta file with protein sequences</h1>
+<h1 id="if-protein-file-exists-from-the-assembly-files-then-download-it">If protein file exists from the assembly files, then download it</h1>
+<h1 id="if-only-cds-exists-translate-it-to-protein">If only cds exists, translate it to protein</h1>
+<h1 id="if-only-gff-exists-extract-cds-and-translate-to-protein">If only gff exists, extract CDS and translate to protein</h1>
+<h1 id="if-protein-coding-gbff-exist-convert-to-gff">If protein coding gbff exist, convert to gff</h1>
+<h1 id="if-no-annotation-exists-annotate">If no annotation exists, annotate!</h1>
+
+<h1 id="list-all-possible-genomes-and-transcriptomes">List all possible genomes and transcriptomes</h1>
+<h1 id="have-all-possible-genomes-and-transcriptomes-with-good-quality-and-as-complete-as-possible-protein-set">Have all possible genomes and transcriptomes, with good quality and as complete as possible protein set</h1>
+
+<h1 id="do-a-new-phylogenetic-analysis-a-proper-one-with-checking-everything-so-we-can-decide-on-the-species-needed-and-so-we-can-order-them">Do a new phylogenetic analysis, a proper one with checking everything so we can decide on the species needed and so we can order them.</h1>
+
+<h1 id="of-those-with-transcriptome-data-make-a-transcriptome-assembly-and-use-for-phylogeny">Of those with transcriptome data, make a transcriptome assembly and use for phylogeny</h1>
+
+<h1 id="two-phylogenies-1-with-multi-and-uni-together-and-1-containing-only-the-unicellular-organisms---think-about-using-iq3-if-it-goes-faster">Two phylogenies: 1 with multi and uni together and 1 containing only the unicellular organisms - Think about using IQ3 if it goes faster.</h1>
+<h1 id="312-data-points-exist-of-ulvophycea-short-read-rna-samples">312 data points exist of Ulvophycea short read RNA samples</h1>
+<h1 id="703-data-points-exist-of-trebouxiophyceae-short-read-rna-samples">703 data points exist of Trebouxiophyceae short read RNA samples</h1>
+<h1 id="669-data-points-exist-of-sphaeropleales-sra">669 data points exist of Sphaeropleales SRA</h1>
+
+<h1 id="are-some-genes-evolve-faster-in-some-lineages-compared-to-others">Are some genes evolve faster in some lineages compared to others?</h1>
+
+<h1 id="now-lets-do-a-phylostratiography-analysis">Now, let’s do a phylostratiography analysis</h1>
+
+<h1 id="using-the-dollop-program-from-phylip-v369">Using the Dollop program from PHYLIP v3.69</h1>
+<h1 id="turn-the-gene-family-output-into-presence-absence-matrix-for-dollop-input-and-run-dollop">Turn the gene family output into presence-absence matrix for Dollop input and run Dollop</h1>
+<h1 id="download-phylip">Download Phylip</h1>
+<p>wgt https://evolution.gs.washington.edu/phylip/download/phylip-3.697.tar.gz
+tar -zxvf phylip-3.697.tar.gz
+cd phylip-3.697/src/
+mv Makefile.unx Makefile
+make install</p>
+
+<h1 id="executables-are-now-in-phylip-3697exe">Executables are now in phylip-3.697/exe</h1>
+<h1 id="run-dollop">Run Dollop</h1>
+<p>python get_sp_frequency.py mclGroups.I15.table &gt; dollop_input
+sed -i ‘s/(\w{4})(.*)/\1      \t\2/g’ dollop_input</p>
+
+<p>phylip-3.697/exe/dollop</p>
+
+<h1 id="important-step-here-is-to-transform-the-output-to-the-one-with-number-of-genes-gained-and-lost">Important step here is to transform the output to the one with number of genes gained and lost</h1>
+
+<h1 id="make-phylogenetic-tree-of-the-species-with-species-name---one-multi-only-only-uni-only-and-one-all-together">Make phylogenetic tree of the species with species name - One multi only, only uni only and one all together</h1>
+
+<h1 id="run-busco-for-chara-braunii">Run BUSCO for Chara Braunii</h1>
+<p>rsync –copy-links –recursive –times –verbose rsync://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/003/427/395/GCA_003427395.1_Cbr_1.0 ../data/genomes</p>
+
+<p>mkdir -p klebsormidium_Scaffolds_v1.0
+cd klebsormidium_Scaffolds_v1.0
+wget http://www.plantmorphogenesis.bio.titech.ac.jp/~algae_genome_project/klebsormidium/kf_download/120824_klebsormidium_Scaffolds_v1.0.fna
+wget http://www.plantmorphogenesis.bio.titech.ac.jp/~algae_genome_project/klebsormidium/kf_download/171026_klebsormidium_v1.1.gff
+wget http://www.plantmorphogenesis.bio.titech.ac.jp/~algae_genome_project/klebsormidium/kf_download/160614_klebsormidium_v1.1_AA.fasta
+wget http://www.plantmorphogenesis.bio.titech.ac.jp/~algae_genome_project/klebsormidium/kf_download/160614_klebsormidium_v1.1_CDS.fasta
+wget http://www.plantmorphogenesis.bio.titech.ac.jp/~algae_genome_project/klebsormidium/kf_download/160614_klebsormidium_v1.1_RNA.fasta</p>
+
+<p>ln -s ../genomes/klebsormidium_Scaffolds_v1.0/120824_klebsormidium_Scaffolds_v1.0.fna
+ln -s ../genomes/GCA_003427395.1_Cbr_1.0/GCA_003427395.1_Cbr_1.0_genomic.fna</p>
+
+<p>mv 120824_klebsormidium_Scaffolds_v1.0.fna KleFla.genomic.fna
+mv GCA_003427395.1_Cbr_1.0_genomic.fna ChaBra.genomic.fna</p>
+
+<p>for genome in ../data/fasta_softlinks/KleFla.genomic.fna ../data/fasta_softlinks/ChaBra.genomic.fna
+do
+echo $genome
+dir_name=$(echo $genome | cut -f4 -d ‘/’ | sed ‘s/.genomic.fna//g’)
+echo $dir_name
+sbatch -J $dir_name busco.sh $genome $dir_name &gt; slurm_job_IDs/busco/${dir_name}.out
+done</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>zcat GCA_003427395.1_Cbr_1.0/GCA_003427395.1_Cbr_1.0_genomic.gff.gz</td>
+      <td>grep -v “#”</td>
+      <td>awk ‘$3==”gene”’</td>
+      <td>wc</td>
+    </tr>
+    <tr>
+      <td>zcat GCA_021605115.1_Astre_guber_v1.0/GCA_021605115.1_Astre_guber_v1.0_genomic.gff.gz</td>
+      <td>grep -v “#”</td>
+      <td>awk ‘$3==”gene”’</td>
+      <td>wc</td>
+    </tr>
+    <tr>
+      <td>zcat GCA_019650175.1_Vafri_1.0/GCA_019650175.1_Vafri_1.0_genomic.gff.gz</td>
+      <td>grep -v “#”</td>
+      <td>awk ‘$3==”gene”’</td>
+      <td>wc</td>
+    </tr>
+    <tr>
+      <td>zcat GCA_000143455.1_v1.0/GCA_000143455.1_v1.0_genomic.gff.gz</td>
+      <td>grep -v “#”</td>
+      <td>awk ‘$3==”gene”’</td>
+      <td>wc</td>
+    </tr>
+    <tr>
+      <td>zcat GCA_019650235.1_Vretifemale_1.0/GCA_019650235.1_Vretifemale_1.0_genomic.gff.gz</td>
+      <td>grep -v “#”</td>
+      <td>awk ‘$3==”gene”’</td>
+      <td>wc</td>
+    </tr>
+    <tr>
+      <td>zcat GCA_905146915.1_Ostreobium_1D_genome/GCA_905146915.1_Ostreobium_1D_genome_genomic.gff.gz</td>
+      <td>grep -v “#”</td>
+      <td>awk ‘$3==”gene”’</td>
+      <td>wc</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Just make a list of all transcriptomes avaialble 
+Number of unique species?
+Where it is placed in the phylogeny?</p>
+:ET
